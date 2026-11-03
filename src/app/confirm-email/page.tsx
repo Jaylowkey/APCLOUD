@@ -2,20 +2,19 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Cloud, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ConfirmEmailPage(){
   const router=useRouter();
-  const params=useSearchParams();
-  const [email,setEmail]=useState(params.get("email")??"");
+  const [email,setEmail]=useState("");
   const [token,setToken]=useState("");
   const [busy,setBusy]=useState(false);
   const [resending,setResending]=useState(false);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
-  useEffect(()=>{setEmail(params.get("email")??"");},[params]);
+  useEffect(()=>{const value=new URLSearchParams(window.location.search).get("email");if(value)setEmail(value);},[]);
   async function verify(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setBusy(true);setError("");setMessage("");
     try{

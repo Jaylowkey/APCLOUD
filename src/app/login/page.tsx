@@ -21,7 +21,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       router.replace("/gallery"); router.refresh();
-    } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível iniciar sessão."); }
+    } catch (e) { const m=e instanceof Error?e.message.toLowerCase():""; if(m.includes("invalid login credentials"))setError("Email ou palavra-passe incorretos. Confirma os teus dados e tenta novamente."); else if(m.includes("email not confirmed"))setError("Ainda falta confirmar o teu email. Introduz o código enviado para a tua caixa de entrada."); else if(m.includes("too many requests"))setError("Foram feitas demasiadas tentativas. Aguarda alguns minutos e tenta novamente."); else if(m.includes("network")||m.includes("fetch"))setError("Não foi possível ligar ao servidor. Verifica a tua ligação à internet."); else setError("Não foi possível iniciar sessão. Verifica os dados e tenta novamente."); }
     finally { setBusy(false); }
   }
 

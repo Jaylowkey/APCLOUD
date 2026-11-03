@@ -14,11 +14,11 @@ export default function SignupPage() {
     event.preventDefault(); setBusy(true); setError(""); setMessage("");
     try {
       const supabase=createClient();
-      const {data,error}=await supabase.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:`${window.location.origin}/auth/callback?next=/gallery`}});
+      const {data,error}=await supabase.auth.signUp({email,password,options:{data:{full_name:name}}});
       if(error) throw error;
       if(data.session){router.replace("/gallery");router.refresh();}
-      else setMessage("Conta criada. Verifica o teu email para confirmares o registo antes de entrar.");
-    } catch(e){setError(e instanceof Error?e.message:"Não foi possível criar a conta.");}
+      else router.push(`/confirm-email?email=${encodeURIComponent(email)}`);
+    } catch(e){const m=e instanceof Error?e.message.toLowerCase():"";if(m.includes("already registered")||m.includes("user already registered"))setError("Não foi possível criar a conta com estes dados. Verifica o email ou tenta entrar se já tiveres uma conta.");else if(m.includes("password"))setError("A palavra-passe não cumpre os requisitos. Usa pelo menos 8 caracteres.");else if(m.includes("too many requests"))setError("Atingiste o limite de tentativas. Aguarda alguns minutos.");else setError("Não foi possível criar a conta neste momento. Confirma os dados e tenta novamente.");}
     finally{setBusy(false);}
   }
   return <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-12"><div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/60 sm:p-10">

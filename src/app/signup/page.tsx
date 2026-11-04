@@ -16,8 +16,14 @@ export default function SignupPage() {
       const supabase=createClient();
       const {data,error}=await supabase.auth.signUp({email,password,options:{data:{full_name:name}}});
       if(error) throw error;
+      // Supabase intentionally returns an empty identities array for an email
+      // that already belongs to an account when email confirmations are enabled.
+      if(data.user && data.user.identities?.length === 0){
+        setError("Este email já está registado. Inicia sessão ou recupera a tua palavra-passe.");
+        return;
+      }
       if(data.session){router.replace("/gallery");router.refresh();}
-      else router.push(`/confirm-email?email=${encodeURIComponent(email)}`);
+      else router.push(`/confirm-email?email=${encodeURIComponent(email.trim())}`);
     } catch(e){const m=e instanceof Error?e.message.toLowerCase():"";if(m.includes("already registered")||m.includes("user already registered"))setError("Não foi possível criar a conta com estes dados. Verifica o email ou tenta entrar se já tiveres uma conta.");else if(m.includes("password"))setError("A palavra-passe não cumpre os requisitos. Usa pelo menos 8 caracteres.");else if(m.includes("too many requests"))setError("Atingiste o limite de tentativas. Aguarda alguns minutos.");else setError("Não foi possível criar a conta neste momento. Confirma os dados e tenta novamente.");}
     finally{setBusy(false);}
   }

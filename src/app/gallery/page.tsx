@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Cloud, Download, Images, LogOut, Plus, Search, Trash2, Upload, X, RefreshCw, CheckCircle2, LoaderCircle, Folder, FolderPlus, Pencil, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { Camera, Cloud, Download, Images, LogOut, Plus, Search, Trash2, Upload, X, RefreshCw, CheckCircle2, LoaderCircle, Folder, FolderPlus, Pencil, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Share2, Copy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Photo = { id:string; storage_path:string; original_name:string; mime_type:string; size_bytes:number; created_at:string; album_id:string|null };

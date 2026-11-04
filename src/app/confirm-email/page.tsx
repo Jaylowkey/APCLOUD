@@ -25,7 +25,7 @@ export default function ConfirmEmailPage(){
     }catch(e){
       const m=e instanceof Error?e.message.toLowerCase():"";
       if(m.includes("expired"))setError("Este código expirou. Pede um novo código e tenta novamente.");
-      else if(m.includes("invalid")||m.includes("token"))setError("O código não está correto. Confirma os 6 dígitos e tenta novamente.");
+      else if(m.includes("invalid")||m.includes("token"))setError("O código não está correto. Confirma os 8 dígitos e tenta novamente.");
       else if(m.includes("too many"))setError("Atingiste o limite de tentativas. Aguarda alguns minutos.");
       else setError("Não foi possível confirmar o email. Verifica o código e tenta novamente.");
     }finally{setBusy(false);}
@@ -42,13 +42,13 @@ export default function ConfirmEmailPage(){
     <Link href="/" className="mb-10 flex items-center gap-2 text-lg font-semibold"><Cloud className="text-blue-600"/> APCLOUD</Link>
     <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-600"><MailCheck size={28}/></span>
     <h1 className="mt-6 text-3xl font-semibold tracking-tight">Confirma o teu email</h1>
-    <p className="mt-2 text-sm leading-6 text-slate-500">Enviámos um código de confirmação para o teu email. Introduz os 6 dígitos para ativar a tua conta.</p>
+    <p className="mt-2 text-sm leading-6 text-slate-500">Enviámos um código de confirmação para o teu email. Introduz os 8 dígitos para ativar a tua conta.</p>
     <form onSubmit={verify} className="mt-8 space-y-5">
       <label className="block text-sm font-medium text-slate-700">Email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"/></label>
       <label className="block text-sm font-medium text-slate-700">Código de confirmação<input required inputMode="numeric" autoComplete="one-time-code" maxLength={8} minLength={8} pattern="[0-9]{8}" value={token} onChange={e=>setToken(e.target.value.replace(/\D/g,"").slice(0,8))} placeholder="00000000" className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-4 text-center text-2xl font-semibold tracking-[.5em] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"/></label>
       {error&&<p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {message&&<p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
-      <button disabled={busy||token.length!==6} className="w-full rounded-xl bg-blue-600 py-3.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{busy?"A confirmar...":"Confirmar email"}</button>
+      <button disabled={busy||token.length!==8} className="w-full rounded-xl bg-blue-600 py-3.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{busy?"A confirmar...":"Confirmar email"}</button>
     </form>
     <button onClick={()=>void resend()} disabled={resending} className="mt-5 w-full text-sm font-semibold text-blue-600 hover:underline disabled:opacity-50">{resending?"A reenviar...":"Não recebeste o código? Reenviar"}</button>
     <p className="mt-7 text-center text-sm text-slate-500"><Link href="/signup" className="font-semibold text-blue-600">Voltar ao registo</Link> · <Link href="/login" className="font-semibold text-blue-600">Entrar</Link></p>

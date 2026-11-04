@@ -60,6 +60,12 @@ export default function GalleryPage(){
    }catch(err){setError(readableError(err));return null;}
    finally{setLoading(false);}
  },[router]);
+ async function downloadPhoto(photo:Photo){
+  setError("");try{const supabase=createClient();const {data,error}=await supabase.storage.from("photos").download(photo.storage_path);if(error||!data)throw error??new Error("Download indisponível");const url=URL.createObjectURL(data);const a=document.createElement("a");a.href=url;a.download=photo.original_name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(err){setError(readableError(err));}
+ }
+ async function signOut(){try{const supabase=createClient();const {error}=await supabase.auth.signOut();if(error)throw error;router.replace("/login");router.refresh();}catch(err){setError(readableError(err));}}
+ const albumPhotos=activeAlbum==="trash"?trashPhotos:activeAlbum==="favorites"?photos.filter(p=>p.is_favorite):activeAlbum==="all"?photos:activeAlbum==="unfiled"?photos.filter(p=>!p.album_id):photos.filter(p=>p.album_id===activeAlbum);
+ const filtered=albumPhotos.filter(photo=>{const matchesName=photo.original_name.toLowerCase().includes(query.toLowerCase());if(!matchesName||dateFilter==="all")return matchesName;const date=new Date(photo.created_at);const now=new Date();if(dateFilter==="year")return date.getFullYear()===now.getFullYear();if(dateFilter==="month")return date.getFullYear()===now.getFullYear()&&date.getMonth()===now.getMonth();return matchesName;});
  useEffect(()=>{
    let active=true;let channel:any=null;const supabase=createClient();
    void(async()=>{const userId=await load();if(!active||!userId)return;channel=supabase.channel("gallery-"+userId).on("postgres_changes",{event:"*",schema:"public",table:"photos",filter:"user_id=eq."+userId},()=>{if(active)void load();}).subscribe();})();
@@ -132,12 +138,6 @@ export default function GalleryPage(){
   const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")setViewingPhoto(null);if(event.key==="ArrowRight")navigatePhoto(1);if(event.key==="ArrowLeft")navigatePhoto(-1);};
   window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);
  },[viewingPhoto,filtered]);
- async function downloadPhoto(photo:Photo){
-  setError("");try{const supabase=createClient();const {data,error}=await supabase.storage.from("photos").download(photo.storage_path);if(error||!data)throw error??new Error("Download indisponível");const url=URL.createObjectURL(data);const a=document.createElement("a");a.href=url;a.download=photo.original_name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(err){setError(readableError(err));}
- }
- async function signOut(){try{const supabase=createClient();const {error}=await supabase.auth.signOut();if(error)throw error;router.replace("/login");router.refresh();}catch(err){setError(readableError(err));}}
- const albumPhotos=activeAlbum==="trash"?trashPhotos:activeAlbum==="favorites"?photos.filter(p=>p.is_favorite):activeAlbum==="all"?photos:activeAlbum==="unfiled"?photos.filter(p=>!p.album_id):photos.filter(p=>p.album_id===activeAlbum);
- const filtered=albumPhotos.filter(photo=>{const matchesName=photo.original_name.toLowerCase().includes(query.toLowerCase());if(!matchesName||dateFilter==="all")return matchesName;const date=new Date(photo.created_at);const now=new Date();if(dateFilter==="year")return date.getFullYear()===now.getFullYear();if(dateFilter==="month")return date.getFullYear()===now.getFullYear()&&date.getMonth()===now.getMonth();return matchesName;});
  const groupedPhotos=filtered.reduce<Array<{key:string;label:string;items:Photo[]}>>((groups,photo)=>{const date=new Date(photo.created_at);const key=Number.isNaN(date.getTime())?"sem-data":date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0");let group=groups.find(item=>item.key===key);if(!group){group={key,label:key==="sem-data"?"Data desconhecida":date.toLocaleDateString("pt-PT",{month:"long",year:"numeric"}),items:[]};groups.push(group);}group.items.push(photo);return groups;},[]);
  const storageUsed=photos.reduce((total,photo)=>total+Number(photo.size_bytes||0),0);
  const averagePhotoSize=photos.length?storageUsed/photos.length:0;

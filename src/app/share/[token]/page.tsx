@@ -11,7 +11,10 @@ export default function SharedPhotoPage() {
   const params = useParams<{ token: string }>();
   const [photo, setPhoto] = useState<SharedPhoto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expired, setExpired] = useState(false);\n  const isImage = /\\.(jpg|jpeg|png|webp|gif|heic|heif)$/i.test(photo?.original_name ?? "");\n  const isVideo = /\\.(mp4|mov|mkv)$/i.test(photo?.original_name ?? "");\n  const isAudio = /\\.(mp3|wav|m4a|aac)$/i.test(photo?.original_name ?? "");
+  const [expired, setExpired] = useState(false);
+  const isImage = /\.(jpg|jpeg|png|webp|gif|heic|heif)$/i.test(photo?.original_name ?? "");
+  const isVideo = /\.(mp4|mov|mkv)$/i.test(photo?.original_name ?? "");
+  const isAudio = /\.(mp3|wav|m4a|aac)$/i.test(photo?.original_name ?? "");
 
   useEffect(() => {
     let active = true;
@@ -60,10 +63,8 @@ export default function SharedPhotoPage() {
               <div className="min-w-0"><h1 className="truncate text-sm font-semibold text-slate-900">{photo.original_name}</h1><p className="mt-1 text-xs text-slate-500">Disponível até {new Date(photo.expires_at).toLocaleString("pt-PT")}</p></div>
               <a href={photo.signed_url} download={photo.original_name} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"><Download size={16}/> Descarregar</a>
             </div>
-            <div className="flex min-h-64 items-center justify-center bg-slate-950 p-3 sm:p-6">
-              <img src={photo.signed_url} alt={photo.original_name} className="max-h-[72vh] max-w-full object-contain"/>
-            </div>
-            <p className="px-5 py-3 text-center text-xs text-slate-400">Fotografia partilhada através do APCLOUD</p>
+            <div className="flex min-h-64 items-center justify-center bg-slate-950 p-3 sm:p-6">{isImage ? <img src={photo.signed_url} alt={photo.original_name} className="max-h-[72vh] max-w-full object-contain"/> : isVideo ? <video src={photo.signed_url} controls className="max-h-[72vh] max-w-full"/> : isAudio ? <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center"><Music className="mx-auto mb-4 text-blue-600" size={40}/><audio src={photo.signed_url} controls className="w-full"/></div> : <div className="text-center text-white"><FileText className="mx-auto mb-3" size={48}/><p className="text-sm text-white/80">Ficheiro pronto para descarregar</p></div>}</div>
+            <p className="px-5 py-3 text-center text-xs text-slate-400">Ficheiro partilhado através do APCLOUD</p>
           </div>
         )}
       </section>

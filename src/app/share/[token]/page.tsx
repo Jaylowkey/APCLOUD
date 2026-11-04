@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Cloud, Download, ImageOff, LoaderCircle, ShieldCheck } from "lucide-react";
+import { Cloud, Download, ImageOff, LoaderCircle, ShieldCheck, FileText, Music, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type SharedPhoto = { original_name: string; signed_url: string; expires_at: string };
@@ -11,7 +11,7 @@ export default function SharedPhotoPage() {
   const params = useParams<{ token: string }>();
   const [photo, setPhoto] = useState<SharedPhoto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expired, setExpired] = useState(false);
+  const [expired, setExpired] = useState(false);\n  const isImage = /\\.(jpg|jpeg|png|webp|gif|heic|heif)$/i.test(photo?.original_name ?? "");\n  const isVideo = /\\.(mp4|mov|mkv)$/i.test(photo?.original_name ?? "");\n  const isAudio = /\\.(mp3|wav|m4a|aac)$/i.test(photo?.original_name ?? "");
 
   useEffect(() => {
     let active = true;
@@ -47,7 +47,7 @@ export default function SharedPhotoPage() {
       </header>
       <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-5 py-10">
         {loading ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-5 text-sm text-slate-600 shadow-sm"><LoaderCircle className="animate-spin text-blue-600" size={20}/> A abrir fotografia partilhada...</div>
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-5 text-sm text-slate-600 shadow-sm"><LoaderCircle className="animate-spin text-blue-600" size={20}/> A abrir ficheiro partilhado...</div>
         ) : expired || !photo ? (
           <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white px-7 py-12 text-center shadow-sm">
             <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-slate-100 text-slate-500"><ImageOff size={28}/></span>

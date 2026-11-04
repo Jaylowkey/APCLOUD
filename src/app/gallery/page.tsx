@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, CalendarDays, Cloud, Download, Images, LogOut, Plus, Search, Trash2, Upload, X, RefreshCw, CheckCircle2, LoaderCircle, Folder, FolderPlus, Menu, Pencil, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Share2, Copy, Star, MoreVertical } from "lucide-react";
+import { Camera, CalendarDays, Cloud, Download, Images, LogOut, Plus, Search, Trash2, Upload, X, RefreshCw, CheckCircle2, LoaderCircle, Folder, FolderPlus, Menu, Pencil, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Share2, Copy, Star, MoreVertical, FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Photo = { id:string; storage_path:string; original_name:string; mime_type:string; size_bytes:number; created_at:string; album_id:string|null; deleted_at:string|null; is_favorite:boolean };
@@ -80,16 +80,16 @@ export default function GalleryPage(){
    let completed=0;const issues:string[]=[];const selected=Array.from(files);
    for(let i=0;i<selected.length;i++){
     const original=selected[i];
-    if(!ALLOWED_TYPES.includes(original.type)&&!(/\\.(pdf|doc|docx|xls|xlsx|txt|csv|zip|rar|7z|mp3|wav|m4a|aac|mp4|mov|mkv)$/i.test(original.name))){issues.push(original.name+": formato não suportado.");continue;}
+    if(!ALLOWED_TYPES.includes(original.type)&&!(/\.(pdf|doc|docx|xls|xlsx|txt|csv|zip|rar|7z|mp3|wav|m4a|aac|mp4|mov|mkv)$/i.test(original.name))){issues.push(original.name+": formato não suportado.");continue;}
     if(original.size>MAX_FILE_SIZE){issues.push(original.name+": excede o limite de 20 MB.");continue;}
-    setProgress("A otimizar "+original.name+" ("+(i+1)+"/"+selected.length+")");
-    const file=await optimizeImage(original);
+    setProgress("A preparar "+original.name+" ("+(i+1)+"/"+selected.length+")");
+    const file=original.type.startsWith("image/")?await optimizeImage(original):original;
     const ext=file.type==="image/webp"?"webp":(file.name.split(".").pop()?.toLowerCase()||"jpg");
     const path=user.id+"/"+crypto.randomUUID()+"."+ext;
     setProgress("A enviar "+original.name+" · "+(file.size/1024/1024).toFixed(1)+" MB");
-    const {error:storageError}=await supabase.storage.from("photos").upload(path,file,{contentType:file.type,upsert:false,cacheControl:"3600"});
+    const {error:storageError}=await supabase.storage.from("photos").upload(path,file,{contentType:file.type||original.type||"application/octet-stream",upsert:false,cacheControl:"3600"});
     if(storageError){issues.push(original.name+": "+readableError(storageError));continue;}
-    const {error:dbError}=await supabase.from("photos").insert({user_id:user.id,storage_path:path,original_name:original.name,mime_type:file.type,size_bytes:file.size,album_id:activeAlbum==="all"||activeAlbum==="unfiled"||activeAlbum==="trash"?null:activeAlbum});
+    const {error:dbError}=await supabase.from("photos").insert({user_id:user.id,storage_path:path,original_name:original.name,mime_type:file.type||original.type||"application/octet-stream",size_bytes:file.size,album_id:activeAlbum==="all"||activeAlbum==="unfiled"||activeAlbum==="trash"?null:activeAlbum});
     if(dbError){await supabase.storage.from("photos").remove([path]);issues.push(original.name+": "+readableError(dbError));continue;}
     completed++;
    }

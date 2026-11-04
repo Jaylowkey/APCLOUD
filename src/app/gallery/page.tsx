@@ -50,9 +50,9 @@ export default function GalleryPage(){
      setUserEmail(user.email??"");
      const [{data,error:dbError},{data:albumData,error:albumError},{data:shareData,error:shareError}]=await Promise.all([supabase.from("photos").select("id,storage_path,original_name,mime_type,size_bytes,created_at,album_id,deleted_at,is_favorite").order("created_at",{ascending:false}),supabase.from("albums").select("id,name,description,created_at").order("created_at",{ascending:false}),supabase.from("photo_shares").select("id,photo_id,token,expires_at,created_at").eq("user_id",user.id).order("created_at",{ascending:false})]);
      if(dbError)throw dbError;if(albumError)throw albumError;if(shareError)throw shareError;
-     const rows=(data??[]) as Photo[];setPhotos(rows);setAlbums((albumData??[]) as Album[]);setPhotoShares((shareData??[]) as PhotoShare[]);
-     if(!rows.length){setUrls({});return user.id;}
-     const {data:signedData,error:signedError}=await supabase.storage.from("photos").createSignedUrls(rows.map(photo=>photo.storage_path),3600);
+     const allRows=(data??[]) as Photo[];const rows=allRows.filter(photo=>!photo.deleted_at);setPhotos(rows);setTrashPhotos(allRows.filter(photo=>!!photo.deleted_at));setAlbums((albumData??[]) as Album[]);setPhotoShares((shareData??[]) as PhotoShare[]);
+     if(!allRows.length){setUrls({});return user.id;}
+     const {data:signedData,error:signedError}=await supabase.storage.from("photos").createSignedUrls(allRows.map(photo=>photo.storage_path),3600);
      if(signedError)throw signedError;
      const byPath=new Map((signedData??[]).filter(item=>item.path&&item.signedUrl).map(item=>[item.path,item.signedUrl!]));
      const nextUrls:Record<string,string>={};for(const photo of allRows){const url=byPath.get(photo.storage_path);if(url)nextUrls[photo.id]=url;}

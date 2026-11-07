@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "A private space for your photos, backed up in the cloud.",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "APCLOUD" },
-  icons: { icon: "/icon-192.svg", apple: "/icon-192.svg" }
+  icons: { icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }, { url: "/icon-512.png", sizes: "512x512", type: "image/png" }], apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }] }
 };
 
 export const viewport: Viewport = {

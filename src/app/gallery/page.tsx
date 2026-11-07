@@ -68,9 +68,11 @@ export default function GalleryPage(){
  const albumPhotos=activeAlbum==="trash"?trashPhotos:activeAlbum==="favorites"?photos.filter(p=>p.is_favorite):activeAlbum==="all"?photos:activeAlbum==="unfiled"?photos.filter(p=>!p.album_id):photos.filter(p=>p.album_id===activeAlbum);
  const filtered=albumPhotos.filter(photo=>{const matchesName=photo.original_name.toLowerCase().includes(query.toLowerCase());if(!matchesName||dateFilter==="all")return matchesName;const date=new Date(photo.created_at);const now=new Date();if(dateFilter==="year")return date.getFullYear()===now.getFullYear();if(dateFilter==="month")return date.getFullYear()===now.getFullYear()&&date.getMonth()===now.getMonth();return matchesName;});
  useEffect(()=>{
+   const updateNetwork=()=>{setIsOnline(navigator.onLine);if(navigator.onLine)void syncOfflineUploads();};
+   setIsOnline(navigator.onLine);window.addEventListener("online",updateNetwork);window.addEventListener("offline",updateNetwork);if(navigator.onLine)void syncOfflineUploads();
    let active=true;let channel:any=null;const supabase=createClient();
    void(async()=>{const userId=await load();if(!active||!userId)return;channel=supabase.channel("gallery-"+userId).on("postgres_changes",{event:"*",schema:"public",table:"photos",filter:"user_id=eq."+userId},()=>{if(active)void load();}).subscribe();})();
-   return()=>{active=false;if(channel)void supabase.removeChannel(channel);};
+   return()=>{active=false;window.removeEventListener("online",updateNetwork);window.removeEventListener("offline",updateNetwork);if(channel)void supabase.removeChannel(channel);};
  },[load]);
  async function syncOfflineUploads(){
   if(!navigator.onLine||syncLock.current)return;
@@ -97,7 +99,21 @@ export default function GalleryPage(){
   if(!files?.length||uploading)return;
   setError("");setSuccess("");setUploading(true);
   try{
-   const supabase=createClient();const {data:{user},error:authError}=await supabase.auth.getUser();
+   const supabase=createClient();
+   if(!navigator.onLine){
+    const {data:{session},error:sessionError}=await supabase.auth.getSession();
+    if(sessionError)throw sessionError;
+    if(!session?.user)throw new Error("Inicia sessão enquanto tens Internet para poderes guardar envios offline.");
+    const selected=Array.from(files);
+    for(const original of selected){
+     if(original.size>MAX_FILE_SIZE){setError(original.name+": excede o limite de 20 MB.");continue;}
+     await enqueueUpload({id:crypto.randomUUID(),userId:session.user.id,albumId:activeAlbum==="all"||activeAlbum==="unfiled"||activeAlbum==="trash"?null:activeAlbum,name:original.name,type:original.type||"application/octet-stream",size:original.size,blob:original,createdAt:Date.now()});
+    }
+    const pending=await getPendingUploads(session.user.id);setPendingUploads(pending.length);
+    setSuccess(selected.length+" ficheiro(s) guardado(s) na fila offline. Serão enviados quando a Internet regressar.");
+    return;
+   }
+   const {data:{user},error:authError}=await supabase.auth.getUser();
    if(authError)throw authError;if(!user){router.replace("/login");return;}
    let completed=0;const issues:string[]=[];const selected=Array.from(files);
    for(let i=0;i<selected.length;i++){

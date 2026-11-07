@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Camera, CalendarDays, Cloud, Download, Images, LogOut, Plus, Search, Trash2, Upload, X, RefreshCw, CheckCircle2, LoaderCircle, Folder, FolderPlus, Menu, Pencil, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Share2, Copy, Star, MoreVertical, FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { enqueueUpload, getPendingUploads, removePendingUpload } from "@/lib/offline-queue";

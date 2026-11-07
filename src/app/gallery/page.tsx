@@ -143,7 +143,7 @@ export default function GalleryPage(){
    let completed=0;const issues:string[]=[];const selected=Array.from(files);
    for(let i=0;i<selected.length;i++){
     const original=selected[i];
-    if(!ALLOWED_TYPES.includes(original.type)&&!(/\.(pdf|doc|docx|xls|xlsx|txt|csv|zip|rar|7z|mp3|wav|m4a|aac|mp4|mov|mkv)$/i.test(original.name))){issues.push(original.name+": formato não suportado.");continue;}
+    if(!ALLOWED_TYPES.includes(original.type)&&!(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp|rtf|txt|md|csv|json|xml|epub|zip|rar|7z|mp3|wav|m4a|aac|ogg|flac|mp4|mov|mkv|webm|avi|m4v|3gp)$/i.test(original.name))){issues.push(original.name+": formato não suportado.");continue;}
     if(original.size>MAX_FILE_SIZE){issues.push(original.name+": excede o limite de 20 MB.");continue;}
     setProgress("A preparar "+original.name+" ("+(i+1)+"/"+selected.length+")");
     const file=original.type.startsWith("image/")?await optimizeImage(original):original;

@@ -4,6 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, CalendarDays, Cloud, Download, Images, LogOut, Plus, Search, Trash2, Upload, X, RefreshCw, CheckCircle2, LoaderCircle, Folder, FolderPlus, Menu, Pencil, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Share2, Copy, Star, MoreVertical, FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { enqueueUpload, getPendingUploads, removePendingUpload } from "@/lib/offline-queue";
 
 type Photo = { id:string; storage_path:string; original_name:string; mime_type:string; size_bytes:number; created_at:string; album_id:string|null; deleted_at:string|null; is_favorite:boolean };
 type Album = { id:string; name:string; description:string|null; created_at:string };
@@ -40,7 +41,7 @@ async function optimizeImage(file:File):Promise<File>{
 }
 export default function GalleryPage(){
  const router=useRouter();const inputRef=useRef<HTMLInputElement>(null);const cameraRef=useRef<HTMLInputElement>(null);
- const [photos,setPhotos]=useState<Photo[]>([]);const [trashPhotos,setTrashPhotos]=useState<Photo[]>([]);const [albums,setAlbums]=useState<Album[]>([]);const [photoShares,setPhotoShares]=useState<PhotoShare[]>([]);const [revokingShare,setRevokingShare]=useState<string|null>(null);const [activeAlbum,setActiveAlbum]=useState("all");const [albumDialog,setAlbumDialog]=useState(false);const [albumName,setAlbumName]=useState("");const [editingAlbum,setEditingAlbum]=useState<Album|null>(null);const [albumBusy,setAlbumBusy]=useState(false);const [albumToDelete,setAlbumToDelete]=useState<Album|null>(null);const [urls,setUrls]=useState<Record<string,string>>({});const [loading,setLoading]=useState(true);const [uploading,setUploading]=useState(false);const [progress,setProgress]=useState("");const [error,setError]=useState("");const [success,setSuccess]=useState("");const [userEmail,setUserEmail]=useState("");const [query,setQuery]=useState("");const [dateFilter,setDateFilter]=useState("all");const [sidebarOpen,setSidebarOpen]=useState(false);const [photoToDelete,setPhotoToDelete]=useState<Photo|null>(null);const [renamingPhoto,setRenamingPhoto]=useState<Photo|null>(null);const [newPhotoName,setNewPhotoName]=useState("");const [renameBusy,setRenameBusy]=useState(false);const [deleting,setDeleting]=useState(false);const [viewingPhoto,setViewingPhoto]=useState<Photo|null>(null);const [zoom,setZoom]=useState(1);const [sharingPhoto,setSharingPhoto]=useState<Photo|null>(null);const [shareDays,setShareDays]=useState("1");const [shareBusy,setShareBusy]=useState(false);const [shareUrl,setShareUrl]=useState("");const [selectedIds,setSelectedIds]=useState<string[]>([]);const [bulkBusy,setBulkBusy]=useState(false);const [bulkAlbum,setBulkAlbum]=useState("unfiled");const [libraryView,setLibraryView]=useState<"photos"|"albums">("photos");const [openPhotoMenu,setOpenPhotoMenu]=useState<string|null>(null);
+ const [photos,setPhotos]=useState<Photo[]>([]);const [trashPhotos,setTrashPhotos]=useState<Photo[]>([]);const [albums,setAlbums]=useState<Album[]>([]);const [photoShares,setPhotoShares]=useState<PhotoShare[]>([]);const [revokingShare,setRevokingShare]=useState<string|null>(null);const [activeAlbum,setActiveAlbum]=useState("all");const [albumDialog,setAlbumDialog]=useState(false);const [albumName,setAlbumName]=useState("");const [editingAlbum,setEditingAlbum]=useState<Album|null>(null);const [albumBusy,setAlbumBusy]=useState(false);const [albumToDelete,setAlbumToDelete]=useState<Album|null>(null);const [urls,setUrls]=useState<Record<string,string>>({});const [loading,setLoading]=useState(true);const [uploading,setUploading]=useState(false);const [progress,setProgress]=useState("");const [error,setError]=useState("");const [success,setSuccess]=useState("");const [userEmail,setUserEmail]=useState("");const [query,setQuery]=useState("");const [dateFilter,setDateFilter]=useState("all");const [sidebarOpen,setSidebarOpen]=useState(false);const [photoToDelete,setPhotoToDelete]=useState<Photo|null>(null);const [renamingPhoto,setRenamingPhoto]=useState<Photo|null>(null);const [newPhotoName,setNewPhotoName]=useState("");const [renameBusy,setRenameBusy]=useState(false);const [deleting,setDeleting]=useState(false);const [viewingPhoto,setViewingPhoto]=useState<Photo|null>(null);const [zoom,setZoom]=useState(1);const [sharingPhoto,setSharingPhoto]=useState<Photo|null>(null);const [shareDays,setShareDays]=useState("1");const [shareBusy,setShareBusy]=useState(false);const [shareUrl,setShareUrl]=useState("");const [selectedIds,setSelectedIds]=useState<string[]>([]);const [bulkBusy,setBulkBusy]=useState(false);const [bulkAlbum,setBulkAlbum]=useState("unfiled");const [libraryView,setLibraryView]=useState<"photos"|"albums">("photos");const [openPhotoMenu,setOpenPhotoMenu]=useState<string|null>(null);const [isOnline,setIsOnline]=useState(true);const [pendingUploads,setPendingUploads]=useState(0);const [syncingOffline,setSyncingOffline]=useState(false);const syncLock=useRef(false);
  const load=useCallback(async()=>{
    setError("");
    try{
@@ -71,6 +72,27 @@ export default function GalleryPage(){
    void(async()=>{const userId=await load();if(!active||!userId)return;channel=supabase.channel("gallery-"+userId).on("postgres_changes",{event:"*",schema:"public",table:"photos",filter:"user_id=eq."+userId},()=>{if(active)void load();}).subscribe();})();
    return()=>{active=false;if(channel)void supabase.removeChannel(channel);};
  },[load]);
+ async function syncOfflineUploads(){
+  if(!navigator.onLine||syncLock.current)return;
+  syncLock.current=true;setSyncingOffline(true);
+  try{
+   const supabase=createClient();const {data:{session},error:sessionError}=await supabase.auth.getSession();
+   if(sessionError)throw sessionError;if(!session?.user)return;
+   const pending=await getPendingUploads(session.user.id);setPendingUploads(pending.length);
+   for(const item of pending){
+    if(!navigator.onLine)break;
+    const path=item.userId+"/"+crypto.randomUUID()+"."+(item.name.split(".").pop()?.toLowerCase()||"bin");
+    const {error:storageError}=await supabase.storage.from("photos").upload(path,item.blob,{contentType:item.type||"application/octet-stream",upsert:false,cacheControl:"3600"});
+    if(storageError){console.warn("APCLOUD offline sync:",storageError.message);break;}
+    const {error:dbError}=await supabase.from("photos").insert({user_id:item.userId,storage_path:path,original_name:item.name,mime_type:item.type||"application/octet-stream",size_bytes:item.size,album_id:item.albumId});
+    if(dbError){await supabase.storage.from("photos").remove([path]);console.warn("APCLOUD offline metadata:",dbError.message);break;}
+    await removePendingUpload(item.id);
+   }
+   const remaining=await getPendingUploads(session.user.id);setPendingUploads(remaining.length);
+   if(pending.length>remaining.length){setSuccess((pending.length-remaining.length)+" ficheiro(s) offline sincronizado(s).");await load();}
+  }catch(err){console.warn("APCLOUD: sincronização offline pendente.",err);}
+  finally{syncLock.current=false;setSyncingOffline(false);}
+ }
  async function uploadFiles(files:FileList|null){
   if(!files?.length||uploading)return;
   setError("");setSuccess("");setUploading(true);

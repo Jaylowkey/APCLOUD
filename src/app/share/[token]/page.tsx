@@ -15,6 +15,7 @@ export default function SharedPhotoPage() {
   const isImage = /\.(jpg|jpeg|png|webp|gif|heic|heif)$/i.test(photo?.original_name ?? "");
   const isVideo = /\.(mp4|mov|mkv)$/i.test(photo?.original_name ?? "");
   const isAudio = /\.(mp3|wav|m4a|aac)$/i.test(photo?.original_name ?? "");
+  const isPdf = /\.pdf$/i.test(photo?.original_name ?? "");
 
   useEffect(() => {
     let active = true;

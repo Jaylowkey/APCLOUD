@@ -1,26 +1,34 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 export default function AppBackButton() {
   const pathname = usePathname();
   const router = useRouter();
+  const routeStack = useRef<string[]>([]);
+
+  useEffect(() => {
+    if (!pathname) return;
+    const current = routeStack.current;
+    if (current[current.length - 1] !== pathname) current.push(pathname);
+  }, [pathname]);
 
   if (!pathname || pathname === "/" || /^\/(login|signup|forgot-password|reset-password)(\/|$)/.test(pathname)) return null;
 
   function goBack() {
+    const current = routeStack.current;
+    if (current.length > 1) {
+      current.pop();
+      router.push(current[current.length - 1]);
+      return;
+    }
+
     const fallback = pathname.startsWith("/share/") ? "/gallery"
       : pathname.startsWith("/settings/") ? "/dashboard"
       : pathname === "/dashboard" ? "/gallery"
       : "/dashboard";
-
-    const referrer = document.referrer;
-    const cameFromThisApp = !!referrer && new URL(referrer).origin === window.location.origin;
-    if (cameFromThisApp && window.history.length > 1) {
-      router.back();
-      return;
-    }
     router.push(fallback);
   }
 

@@ -72,8 +72,29 @@ export default function GalleryPage(){
    }catch(err){setError(readableError(err));return null;}
    finally{setLoading(false);}
  },[router]);
- async function downloadPhoto(photo:Photo){
-  setError("");try{const supabase=createClient();const {data,error}=await supabase.storage.from("photos").download(photo.storage_path);if(error||!data)throw error??new Error("Download indisponível");const url=URL.createObjectURL(data);const a=document.createElement("a");a.href=url;a.download=photo.original_name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(err){setError(readableError(err));}
+ async function downloadPhoto(photo:Photo):Promise<boolean>{
+  setError("");
+  try{
+   const supabase=createClient();
+   const {data,error}=await supabase.storage.from("photos").download(photo.storage_path);
+   if(error)throw error;
+   if(!data||data.size===0)throw new Error("O servidor devolveu um ficheiro vazio.");
+   const objectUrl=URL.createObjectURL(data);
+   const anchor=document.createElement("a");
+   anchor.href=objectUrl;
+   anchor.download=photo.original_name||"apcloud-download";
+   anchor.rel="noopener";
+   anchor.style.display="none";
+   document.body.appendChild(anchor);
+   anchor.click();
+   anchor.remove();
+   // Keep the Blob URL alive long enough for mobile browsers and PWA download managers.
+   window.setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+   return true;
+  }catch(err){
+   setError(readableError(err));
+   return false;
+  }
  }
  async function signOut(){try{const supabase=createClient();const {error}=await supabase.auth.signOut();if(error)throw error;router.replace("/login");router.refresh();}catch(err){setError(readableError(err));}}
  const albumPhotos=activeAlbum==="trash"?trashPhotos:activeAlbum==="favorites"?photos.filter(p=>p.is_favorite):activeAlbum==="all"?photos:activeAlbum==="unfiled"?photos.filter(p=>!p.album_id):photos.filter(p=>p.album_id===activeAlbum);
@@ -197,8 +218,10 @@ export default function GalleryPage(){
   const ids=selectedPhotos.map(photo=>photo.id);const supabase=createClient();
   try{
    if(action==="download"){
-    let done=0;for(const photo of selectedPhotos){await downloadPhoto(photo);done++;}
-    setSuccess(done+" fotografia(s) preparada(s) para descarregar.");
+    let done=0;let failed=0;
+    for(const photo of selectedPhotos){if(await downloadPhoto(photo))done++;else failed++;}
+    if(done)setSuccess(done+" ficheiro(s) enviado(s) para download.");
+    if(failed)setError(failed+" ficheiro(s) não puderam ser descarregados. Verifica a ligação e as permissões e tenta novamente.");
    }else if(action==="favorite"){
     const {error}=await supabase.from("photos").update({is_favorite:true}).in("id",ids);if(error)throw error;
     setPhotos(current=>current.map(photo=>ids.includes(photo.id)?{...photo,is_favorite:true}:photo));setSuccess(ids.length+" fotografia(s) adicionada(s) aos favoritos.");

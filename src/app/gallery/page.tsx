@@ -73,7 +73,22 @@ export default function GalleryPage(){
    finally{setLoading(false);}
  },[router]);
  async function downloadPhoto(photo:Photo){
-  setError("");try{const supabase=createClient();const {data,error}=await supabase.storage.from("photos").download(photo.storage_path);if(error||!data)throw error??new Error("Download indisponível");const url=URL.createObjectURL(data);const a=document.createElement("a");a.href=url;a.download=photo.original_name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(err){setError(readableError(err));}
+  setError("");
+  try{
+   const supabase=createClient();
+   const {data,error}=await supabase.storage.from("photos").download(photo.storage_path);
+   if(!error&&data){
+    const objectUrl=URL.createObjectURL(data);const link=document.createElement("a");link.href=objectUrl;link.download=photo.original_name;link.rel="noopener";document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(objectUrl),1500);return;
+   }
+   let signedUrl=urls[photo.id];
+   if(!signedUrl){const signed=await supabase.storage.from("photos").createSignedUrl(photo.storage_path,300);if(signed.error||!signed.data?.signedUrl)throw error??signed.error??new Error("Download indisponível");signedUrl=signed.data.signedUrl;}
+   try{
+    const response=await fetch(signedUrl);if(!response.ok)throw new Error("signed-fetch");
+    const blob=await response.blob();const objectUrl=URL.createObjectURL(blob);const link=document.createElement("a");link.href=objectUrl;link.download=photo.original_name;link.rel="noopener";document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(objectUrl),1500);
+   }catch{
+    const directLink=document.createElement("a");directLink.href=signedUrl;directLink.download=photo.original_name;directLink.target="_blank";directLink.rel="noopener noreferrer";document.body.appendChild(directLink);directLink.click();directLink.remove();
+   }
+  }catch(err){setError(readableError(err));}
  }
  async function signOut(){try{const supabase=createClient();const {error}=await supabase.auth.signOut();if(error)throw error;router.replace("/login");router.refresh();}catch(err){setError(readableError(err));}}
  const albumPhotos=activeAlbum==="trash"?trashPhotos:activeAlbum==="favorites"?photos.filter(p=>p.is_favorite):activeAlbum==="all"?photos:activeAlbum==="unfiled"?photos.filter(p=>!p.album_id):photos.filter(p=>p.album_id===activeAlbum);
@@ -182,11 +197,23 @@ export default function GalleryPage(){
   if(!viewingPhoto)return;const index=filtered.findIndex(p=>p.id===viewingPhoto.id);if(index<0)return;
   const next=filtered[index+direction];if(next){setViewingPhoto(next);setZoom(1);}
  }
+ const viewingPhotoRef=useRef<Photo|null>(null);
+ useEffect(()=>{viewingPhotoRef.current=viewingPhoto;},[viewingPhoto]);
  useEffect(()=>{
   if(!viewingPhoto)return;
   const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")setViewingPhoto(null);if(event.key==="ArrowRight")navigatePhoto(1);if(event.key==="ArrowLeft")navigatePhoto(-1);};
   window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);
  },[viewingPhoto,filtered]);
+ useEffect(()=>{
+  const guardState={apcloudGallery:true};
+  window.history.pushState(guardState,"",window.location.href);
+  const onBack=()=>{
+   if(viewingPhotoRef.current){setViewingPhoto(null);window.history.pushState(guardState,"",window.location.href);return;}
+   router.replace("/dashboard");
+  };
+  window.addEventListener("popstate",onBack);
+  return()=>window.removeEventListener("popstate",onBack);
+ },[router]);
  const groupedPhotos=filtered.reduce<Array<{key:string;label:string;items:Photo[]}>>((groups,photo)=>{const date=new Date(photo.created_at);const key=Number.isNaN(date.getTime())?"sem-data":date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0");let group=groups.find(item=>item.key===key);if(!group){group={key,label:key==="sem-data"?"Data desconhecida":date.toLocaleDateString("pt-PT",{month:"long",year:"numeric"}),items:[]};groups.push(group);}group.items.push(photo);return groups;},[]);
  const selectedPhotos=filtered.filter(photo=>selectedIds.includes(photo.id));
  const allVisibleSelected=filtered.length>0&&filtered.every(photo=>selectedIds.includes(photo.id));
